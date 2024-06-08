@@ -1,0 +1,20 @@
+from selenium import webdriver
+import time
+import os
+
+# 创建Chrome WebDriver实例
+driver = webdriver.Chrome()
+
+# 打开地图网页
+map_file_path = r"C:\Users\21523\Desktop\出图3\map.html"  # 使用原始字符串标识符
+driver.get("file:///" + map_file_path)  
+
+# 等待地图加载完成
+time.sleep(15)  # 根据需要调整等待时间
+
+# 将地图保存为屏幕截图
+screenshot_file_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'zhejiang_map.png')
+driver.save_screenshot(screenshot_file_path)
+
+# 关闭浏览器
+driver.quit()

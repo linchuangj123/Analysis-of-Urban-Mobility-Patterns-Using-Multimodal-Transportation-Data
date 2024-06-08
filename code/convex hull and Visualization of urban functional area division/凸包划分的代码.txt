@@ -1,0 +1,48 @@
+import folium
+import pandas as pd
+from shapely.geometry import Point, shape
+from scipy.spatial import ConvexHull
+
+# 读取浙江省的边界数据
+zhejiang_boundary = gpd.read_file(r'C:\Users\21523\Desktop\全国乡镇边界的经纬度数据集\浙江省行政区域经纬度数据集\scaled_40_percent_浙江省.geoJson')
+
+# 读取数据集，并随机选择10000条数据
+data = pd.read_csv(r'D:\第四篇论文数据\第二篇论文编写程序\人类行为时空特性关联性建模\浙江省手机信令数据集\visit_duration_distance_v.csv', usecols=['slon', 'slat']).sample(n=10000)
+
+# 创建地图对象
+m = folium.Map(location=[29.0842, 119.6474], zoom_start=8, tiles='CartoDB positron')
+
+# 遍历各地级市的边界数据
+for index, row in zhejiang_boundary.iterrows():
+    city_name = row['name']
+    city_boundary = shape(row['geometry'])
+    
+    # 如果数据点为空，跳过绘制
+    if data.empty:
+        continue
+    
+    # 创建几何对象的缓冲区来避免拓扑错误，并放大凸包
+    city_boundary_buffered = city_boundary.buffer(0)
+    city_boundary_expanded = city_boundary_buffered.buffer(city_boundary_buffered.bounds[1] * 0.0035)
+    
+    # 筛选位于当前地级市边界内的数据点
+    points_in_city = data[data.apply(lambda x: city_boundary_expanded.contains(Point(x['slon'], x['slat'])), axis=1)]
+    
+    # 如果数据点为空，跳过绘制
+    if points_in_city.empty:
+        continue
+    
+    # 获取数据点的坐标
+    coords = points_in_city[['slon', 'slat']].values
+    
+    # 计算凸包
+    hull = ConvexHull(coords)
+    
+    # 将凸包点转换为多边形
+    hull_polygon = folium.Polygon(locations=[(coords[i][1], coords[i][0]) for i in hull.vertices], fill=True, fill_color='#3186cc', fill_opacity=0.5, color='#3186cc', weight=1)  # 增加轮廓线的粗细
+    
+    # 将凸包多边形添加到地图
+    hull_polygon.add_to(m)
+
+# 展示地图
+m

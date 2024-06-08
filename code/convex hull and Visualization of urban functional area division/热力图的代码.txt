@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+import folium
+
+# 从文件加载数据
+data = pd.read_csv('C:\\Users\\21523\\Desktop\\hnsy_taxi_attraction.csv')
+
+# Define grid size and latitude-longitude range
+grid_size = 0.025
+min_lon, max_lon = 108.37, 111.05
+min_lat, max_lat = 3.30, 20.18
+
+# Create latitude-longitude grid
+lon_grid = np.arange(min_lon, max_lon, grid_size)
+lat_grid = np.arange(min_lat, max_lat, grid_size)
+
+# Initialize map
+m = folium.Map(location=[20.48, 110.31], zoom_start=10, tiles='CartoDB positron')
+
+# Calculate average attraction value for each grid cell
+attraction_values = []
+for lon in lon_grid:
+    for lat in lat_grid:
+        # Filter data points within the current grid cell
+        grid_data = data[(data['elon'] >= lon) & (data['elon'] < lon + grid_size) &
+                         (data['elat'] >= lat) & (data['elat'] < lat + grid_size)]
+        
+        # If there are data points in the current grid cell, calculate the average attraction value
+        if not grid_data.empty:
+            avg_attraction = grid_data['attraction'].mean()
+            attraction_values.append(avg_attraction)
+            # Set fill color based on the average attraction value
+            color = '#FFFFE0' if avg_attraction < np.quantile(data['attraction'], 0.2) else \
+                    '#FFE4B5' if avg_attraction < np.quantile(data['attraction'], 0.4) else \
+                    '#FFD700' if avg_attraction < np.quantile(data['attraction'], 0.6) else \
+                    '#FFA500' if avg_attraction < np.quantile(data['attraction'], 0.8) else '#800000'
+            
+            # Determine opacity based on the attraction value
+            opacity = 0.9 - 0.4 * (avg_attraction - min(attraction_values)) / (max(attraction_values) - min(attraction_values))
+            
+            # Draw grid cell
+            folium.Rectangle(bounds=[(lat, lon), (lat + grid_size, lon + grid_size)],
+                             fill=True,
+                             color=None,
+                             fill_color=color,
+                             fill_opacity=opacity).add_to(m)
+
+# Create a vertical color bar legend with reversed color gradient
+legend_html = '''
+     <div style="position: fixed; 
+                 bottom: 50px; left: 50px; width: 20px; height: 200px; 
+                 background-color: rgba(255, 255, 255, 0.8); z-index:9999;
+                 border-radius:5px; border: 1px solid grey;">
+
+     <div style="height: 200px; width: 20px; background: linear-gradient(to top, 
+                 #FFFFE0, #FFE4B5, #FFD700, #FFA500, #800000); border-radius:5px;"></div>
+     </div>
+     '''
+
+m.get_root().html.add_child(folium.Element(legend_html))
+
+output_path = r'C:\Users\21523\Desktop\wyk3.html'
+m.save(output_path)
+m
